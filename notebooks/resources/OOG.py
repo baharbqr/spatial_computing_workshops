@@ -76,9 +76,7 @@ class agent():
         if origin:
             self.origin = origin
         else:
-            agn_num = len(preferences)
-            select_id = np.random.choice(len(env.avail_index), agn_num)
-            self.origin = env.avail_index[select_id]
+            self.origin = agent.find_seed(self)
         # TODO: initialize the agent's occupation lattice
         # TODO: initialize the agent's available neighbour lattice per stencil
         # TODO: add agent satisfaction
@@ -86,7 +84,9 @@ class agent():
 
     def find_seed(self):
         # TODO: run the initial seed finding
-        pass
+        agn_num = len(self.preferences)
+        select_id = np.random.choice(len(self.env.avail_index), agn_num)
+        return self.env.avail_index[select_id]
 
     def evaluation(self):
         # TODO: evaluate the agents satisfaction based on the value of it's voxels
