@@ -17,6 +17,8 @@ class environment():
         #TODO: run initialization
         avail_flat = avail_lattice.flatten()
         avail_index = np.array(np.where(avail_lattice == 1)).T
+        cur_occ_lattice = tg.to_lattice(np.copy(occ_lattice), occ_lattice)
+
 
         #TODO: do we need distance matrix?
         
@@ -29,6 +31,7 @@ class environment():
 
     def lattice_update(self, lattice_key: str):
         # TODO: recompute the specified lattice
+
         pass
 
     def all_agents_action(self):
