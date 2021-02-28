@@ -1,3 +1,4 @@
+from numpy.lib.function_base import select
 import topogenesis as tg
 import numpy as np
 import pandas as pd
@@ -67,10 +68,17 @@ class environment():
 
 # Agent class
 class agent():
-    def __init__(self, key: str, preferences: dict, stencils: list, origin: list = None, behaviors: dict = None):
+    def __init__(self, key: str, preferences: dict, stencils: list, origin: list = None, behaviors: dict = None, env : environment):
         # TODO: Set all the preferences as attributes
+        
         # TODO: Set all the behaviors and their parameter as attributes
         # TODO: Run find_seed if the origin is not provided
+        if origin:
+            self.origin = origin
+        else:
+            agn_num = len(preferences)
+            select_id = np.random.choice(len(env.avail_index), agn_num)
+            self.origin = env.avail_index[select_id]
         # TODO: initialize the agent's occupation lattice
         # TODO: initialize the agent's available neighbour lattice per stencil
         # TODO: add agent satisfaction
