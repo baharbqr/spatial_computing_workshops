@@ -9,9 +9,14 @@ class environment():
         self.lattices = lattices
 
         #TODO: construct occupation lattice
+        occ_lattice = avail_lattice * 0 - 1
         #TODO: extract lattice bounds
+        bounds = avail_lattice.bounds
         #TODO: extract lattice shape
+        shape = avail_lattice.shape
         #TODO: run initialization
+        avail_flat = avail_lattice.flatten()
+        avail_index = np.array(np.where(avail_lattice == 1)).T
 
         #TODO: do we need distance matrix?
         
@@ -19,6 +24,7 @@ class environment():
 
     def all_lattice_update(self):
         # TODO: run lattice update on all dynamic lattices
+        
         pass
 
     def lattice_update(self, lattice_key: str):
