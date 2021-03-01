@@ -68,10 +68,16 @@ class environment():
 
 # Agent class
 class agent():
-    def __init__(self, key: str, preferences: dict, stencils: list, origin: list = None, behaviors: dict = None, env : environment):
+    def __init__(self, key: str, preferences: dict, stencils: list, origin: list = None, behaviors: dict = None):
+        self.name = key
+        self.stencil = stencils
+
         # TODO: Set all the preferences as attributes
-        
+        self.pref = preferences
+
         # TODO: Set all the behaviors and their parameter as attributes
+        self.behaviors = behaviors
+
         # TODO: Run find_seed if the origin is not provided
         if origin:
             self.origin = origin
@@ -79,17 +85,21 @@ class agent():
             self.origin = agent.find_seed(self)
         # TODO: initialize the agent's occupation lattice
         # TODO: initialize the agent's available neighbour lattice per stencil
+        
         # TODO: add agent satisfaction
+        self.satisfaction = 0
+        
         pass
 
-    def find_seed(self):
+    def find_seed(self, env: environment):
         # TODO: run the initial seed finding
         agn_num = len(self.preferences)
-        select_id = np.random.choice(len(self.env.avail_index), agn_num)
-        return self.env.avail_index[select_id]
+        select_id = np.random.choice(len(env.avail_index), agn_num)
+        return env.avail_index[select_id]
 
-    def evaluation(self):
+    def evaluation(self, env : environment):
         # TODO: evaluate the agents satisfaction based on the value of it's voxels
+
         pass
 
     def action(self):
