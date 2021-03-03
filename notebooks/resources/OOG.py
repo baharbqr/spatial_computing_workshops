@@ -5,21 +5,18 @@ import pandas as pd
 
 # Environment class
 class environment():
-    def __init__(self, avail_lattice : tg.lattice ,lattices : dict, agents : dict):
-        self.agents = agents
+    def __init__(self, avail_lattice : tg.lattice ,lattices : dict, agents_dict : dict, stencils: list):
         self.lattices = lattices
-
+        self.lattice_names = [lattices.keys()]
+        self.avail_lattice = avail_lattice
         #TODO: construct occupation lattice
-        occ_lattice = avail_lattice * 0 - 1
+        self.occ_lattice = avail_lattice * 0 - 1
         #TODO: extract lattice bounds
-        bounds = avail_lattice.bounds
+        self.bounds = avail_lattice.bounds
         #TODO: extract lattice shape
-        shape = avail_lattice.shape
+        self.shape = avail_lattice.shape
         #TODO: run initialization
-        avail_flat = avail_lattice.flatten()
-        avail_index = np.array(np.where(avail_lattice == 1)).T
-        cur_occ_lattice = tg.to_lattice(np.copy(occ_lattice), occ_lattice)
-
+        self.initialization(agents_dict)
 
         #TODO: do we need distance matrix?
         
@@ -39,11 +36,11 @@ class environment():
         # TODO: run the action method of all agents
         pass
 
-    def agents_action(self, agent_key: str):
+    def agent_action(self, agent_key: str):
         # TODO: run the action method of specified agents
         pass
 
-    def all_agent_evaluation(self):
+    def all_agents_evaluation(self):
         # TODO: run the evaluation method of all agents
         pass
 
@@ -51,29 +48,58 @@ class environment():
         # TODO: run the evaluation method of specified agents
         pass
     
-    def initialization(self):
+    def all_agents_initialization(self, agents_dict):
+        # TODO: run the initialization  of all agents
+        env_agents = {}
+        for name, a in agents_dict.items():
+            # TODO: Check if the agents preferences are matching with the environment lattices
+            agent_preferences = a["preferences"].keys()
+            # TODO: Check if the specified stencils by agent is available in the environment stencils
+            # TODO: Run agent initialization method
+            env_agents[name] = agent(name, self, a["preferences"], a["stencil_names"], a["origin"], a["behaviors"])
+        
+        self.agents = env_agents
+
+    def initialization(self, agents_dict):
+        avail_flat = self.avail_lattice.flatten()
+        avail_index = np.array(np.where(self.avail_lattice == 1)).T
+        # cur_occ_lattice = tg.to_lattice(np.copy(self.occ_lattice), self.occ_lattice)
         # TODO: run the lattice check
-        # TODO: run the agent check
+        self.lattice_check()
         # TODO: check if the preferences of agents matches with the provided lattices
+        self.all_agents_initialization(agents_dict)
         pass
     
     def lattice_check(self):
+        shapes, bounds, mins, maxs = [],[],[],[]
+        # iterate over all lattices
+        for name, l in self.lattices.items():
+            shapes.append(l.shape)
+            bounds.append(l.bounds.flatten())
+            mins.append(l.min)
+            maxs.append(l.max)
+        # access lattice names in self.lattice_names
+
         # TODO: check if all latices have the same shape
+        shape_check = np.all(np.array(shapes) == self.shape)
         # TODO: check if all latices have the same bounds
+        bound_check = np.all(np.array(bounds) == self.bounds.flatten())
         # TODO: check if all latices have valid values
-        pass
-    
-    def agent_check(self):
+        mins_check = np.array(mins).astype(float).min() >= 0.0
+        mins_check = np.array(maxs).astype(float).max() <= 1.0
+
+        # TODO: Check if there is any invalid entry in the lattices (infinity, NaN)
+
         pass
 
 # Agent class
 class agent():
-    def __init__(self, key: str, preferences: dict, stencils: list, origin: list = None, behaviors: dict = None):
-        self.name = key
-        self.stencil = stencils
+    def __init__(self, name: str, env: environment, preferences: dict, stencil_names: list, origin: list = None, behaviors: dict = None):
+        self.name = name
+        self.stencils = env.stencils[stencil_names]
 
         # TODO: Set all the preferences as attributes
-        self.pref = preferences
+        self.preferences = preferences
 
         # TODO: Set all the behaviors and their parameter as attributes
         self.behaviors = behaviors
@@ -82,12 +108,14 @@ class agent():
         if origin:
             self.origin = origin
         else:
-            self.origin = agent.find_seed(self)
+            self.origin = agent.find_seed(self, env)
+
         # TODO: initialize the agent's occupation lattice
+        
         # TODO: initialize the agent's available neighbour lattice per stencil
         
         # TODO: add agent satisfaction
-        self.satisfaction = 0
+        self.satisfaction = 0.0
         
         pass
 
