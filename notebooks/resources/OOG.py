@@ -54,9 +54,10 @@ class environment():
         for name, a in agents_dict.items():
             # TODO: Check if the agents preferences are matching with the environment lattices
             agent_preferences = a["preferences"].keys()
+            agn_id = agents_dict.keys().index(name)
             # TODO: Check if the specified stencils by agent is available in the environment stencils
             # TODO: Run agent initialization method
-            env_agents[name] = agent(name, self, a["preferences"], a["stencil_names"], a["origin"], a["behaviors"])
+            env_agents[name] = agent(agn_id, name, self, a["preferences"], a["stencil_names"], a["origin"], a["behaviors"])
         
         self.agents = env_agents
 
@@ -94,9 +95,10 @@ class environment():
 
 # Agent class
 class agent():
-    def __init__(self, name: str, env: environment, preferences: dict, stencil_names: list, origin: list = None, behaviors: dict = None):
+    def __init__(self, id: int, name: str, env: environment, preferences: dict, stencil_names: list, origin: list = None, behaviors: dict = None):
         self.name = name
         self.stencils = env.stencils[stencil_names]
+        self.id = id
 
         # TODO: Set all the preferences as attributes
         self.preferences = preferences
@@ -110,14 +112,21 @@ class agent():
         else:
             self.origin = agent.find_seed(self, env)
 
-        # TODO: initialize the agent's occupation lattice
-        occ_lat = env.occ_lattice
+        # TODO: initialize the agent's occupation lattice ----> Bahar: other than updating the occ_lattice, what did you mean by "agent's occupation lattice?"
+        self.occ_lattice = env.occ_lattice * 0
+        self.update_avail_lattice(env)
+        self.update_occ_lattice(env)
+        # Bahar: If 'self.origin' is a list of tuples of indexes, can I write
+        #       env.occ_lattice[self.origin] = self.id
+        #       instead?       
+
         # TODO: initialize the agent's available neighbour lattice per stencil
-        
+        self.neighbours = {}
+        self.update_neighbor(env)
+                
         # TODO: add agent satisfaction
-        self.satisfaction = 0.0
-        
-        pass
+        self.satisfaction = {}
+        self.satisfaction = self.evaluation(env)
 
 
     def find_seed(self, env: environment):
@@ -127,14 +136,41 @@ class agent():
         return env.avail_index[select_id]
     
     def update_occ_lattice(self, env:environment):
-        for agn in self.origin:
-            env.occ_lattice
+        for agn_index in self.origin:
+            env.occ_lattice[tuple(agn_index)] = self.id
+            self.occ_lattice[tuple(agn_index)] = 1
         pass
+
+    def update_new_vox_occ(self, new_agn_vox_origin: list, env: environment):
+        for index in new_agn_vox_origin:
+            env.occ_lattice[tuple(index)] = self.id
+            self.occ_lattice[tuple(index)] = 1
+
+
+    def update_avail_lattice(self, env: environment):
+        for agn_index in self.origin:
+            env.avail_lattice[tuple(agn_index)] = 0
+
+    def update_new_vox_avail(self, new_agn_vox_origin: list, env: environment):
+        for index in new_agn_vox_origin:
+            env.avail_lattice[tuple(index)] = 0
 
     def evaluation(self, env : environment):
         # TODO: evaluate the agents satisfaction based on the value of it's voxels
+        for info in env.lattices:
+            self.satisfaction = env.lattices[info] / self.preferences[info] * self.occ_lattice
+        return self.satisfaction        
 
+    def update_neighbor(self, env: environment):
+        for stencil in self.stencils:
+            self.neighbours[stencil] = tg.to_lattice(np.copy(self.occ_lattice), self.occ_lattice)
+            for loc in self.origin:
+                neigh_index = env.avail_lattice.find_neighbours_masked(env.stencils[stencil], loc, id_type="3D")
+                for index in neigh_index:
+                    self.neighbours[stencil][tuple(index)] = 1.0
+            self.neighbours[stencil] *= env.avail_lattice
         pass
+
 
     def action(self):
         # TODO: run all the specified behaviors of the agents with their corresponding parameters
