@@ -111,7 +111,7 @@ class agent():
             self.origin = agent.find_seed(self, env)
 
         # TODO: initialize the agent's occupation lattice
-        
+        occ_lat = env.occ_lattice
         # TODO: initialize the agent's available neighbour lattice per stencil
         
         # TODO: add agent satisfaction
@@ -119,11 +119,17 @@ class agent():
         
         pass
 
+
     def find_seed(self, env: environment):
         # TODO: run the initial seed finding
         agn_num = len(self.preferences)
         select_id = np.random.choice(len(env.avail_index), agn_num)
         return env.avail_index[select_id]
+    
+    def update_occ_lattice(self, env:environment):
+        for agn in self.origin:
+            env.occ_lattice
+        pass
 
     def evaluation(self, env : environment):
         # TODO: evaluate the agents satisfaction based on the value of it's voxels
@@ -133,6 +139,13 @@ class agent():
     def action(self):
         # TODO: run all the specified behaviors of the agents with their corresponding parameters
         pass
+
+#class particle():
+    #def __init__(self, stencil_names : list, base, agent_name : str):
+        #pass
+    #def find_neigh(self):
+        #pass
+    
 
 
 # Dynamic Lattice class
