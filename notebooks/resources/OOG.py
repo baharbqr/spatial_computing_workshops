@@ -95,10 +95,10 @@ class environment():
 
 # Agent class
 class agent():
-    def __init__(self, id: int, name: str, env: environment, preferences: dict, stencil_names: list, origin: list = None, behaviors: dict = None):
+    def __init__(self, aid: int, name: str, env: environment, preferences: dict, stencil_names: list, origin: list = None, behaviors: dict = None):
         self.name = name
         self.stencils = env.stencils[stencil_names]
-        self.id = id
+        self.id = aid
 
         # TODO: Set all the preferences as attributes
         self.preferences = preferences
@@ -112,13 +112,16 @@ class agent():
         else:
             self.origin = agent.find_seed(self, env)
 
-        # TODO: initialize the agent's occupation lattice ----> Bahar: other than updating the occ_lattice, what did you mean by "agent's occupation lattice?"
-        self.occ_lattice = env.occ_lattice * 0
-        self.update_avail_lattice(env)
-        self.update_occ_lattice(env)
+        # TODO: initialize the agent's occupation lattice ----> This is tha lattice that describes the voxels occupied by this agent only
+        self.occ_lattice = env.occ_lattice == aid
+        # Shervin: both of these are moved to update_env_lattices method
+        # self.update_avail_lattice(env) 
+        # self.update_occ_lattice(env)
+        self.update_env_lattices(env)
         # Bahar: If 'self.origin' is a list of tuples of indexes, can I write
         #       env.occ_lattice[self.origin] = self.id
-        #       instead?       
+        #       instead? 
+        # Shervin: self.origin is not an important attribute, maybe it is even better to remove it to avoid confusion. But the answer to your question is yes.      
 
         # TODO: initialize the agent's available neighbour lattice per stencil
         self.neighbours = {}
@@ -135,32 +138,46 @@ class agent():
         select_id = np.random.choice(len(env.avail_index), agn_num)
         return env.avail_index[select_id]
     
-    def update_occ_lattice(self, env:environment):
-        for agn_index in self.origin:
-            env.occ_lattice[tuple(agn_index)] = self.id
-            self.occ_lattice[tuple(agn_index)] = 1
-        pass
+    def update_env_lattices(self, env:environment):
+        # Shervin: I have rewritten this part in a vectorised paradigm. I will leave your own code for comparison, remove it after studying the difference.
+        env.occ_lattice[self.occ_lattice] = self.id
+        env.avail_lattice[self.occ_lattice] = 0
+        # self.origin 
+        # for agn_index in self.origin:
+        #     env.occ_lattice[tuple(agn_index)] = self.id
+        #     self.occ_lattice[tuple(agn_index)] = 1
+        # pass
 
-    def update_new_vox_occ(self, new_agn_vox_origin: list, env: environment):
-        for index in new_agn_vox_origin:
-            env.occ_lattice[tuple(index)] = self.id
-            self.occ_lattice[tuple(index)] = 1
+    # def update_new_vox_occ(self, new_agn_vox_origin: list, env: environment):
+    #     # Shervin: This function is not necessary since it can be replaced by one line of code like this:
+    #     # self.occ_lattice[indices] = True
+    #     for index in new_agn_vox_origin:
+    #         env.occ_lattice[tuple(index)] = self.id
+    #         self.occ_lattice[tuple(index)] = 1
 
-
-    def update_avail_lattice(self, env: environment):
-        for agn_index in self.origin:
-            env.avail_lattice[tuple(agn_index)] = 0
-
-    def update_new_vox_avail(self, new_agn_vox_origin: list, env: environment):
-        for index in new_agn_vox_origin:
-            env.avail_lattice[tuple(index)] = 0
+    # def update_new_vox_avail(self, new_agn_vox_origin: list, env: environment):
+    #     # Shervin: similar to the previous function, it is nt necessary
+    #     for index in new_agn_vox_origin:
+    #         env.avail_lattice[tuple(index)] = 0
 
     def evaluation(self, env : environment):
-        # TODO: evaluate the agents satisfaction based on the value of it's voxels
-        for info in env.lattices:
-            self.satisfaction = env.lattices[info] / self.preferences[info] * self.occ_lattice
-        return self.satisfaction        
+        # TODO: evaluate all the voxels based on the agents preferences
+        # initializing the evaluation lattice
+        eval_lat = tg.to_lattice(np.ones(self.occ_lattice.shape), self.occ_lattice)
+        # Shervin: Since the env.lattices is a dictionary we need to iterate it differently
+        # for info in env.lattices.keys():
+        #     eval_lat *= env.lattices[info] ** self.preferences[info]
+        # we do not need to return something, we can just change the attribute of the agent
+        self.eval_lat = eval_lat
 
+    @property
+    def satisfaction(self):
+        # TODO: compute the agents satisfaction based on the value of it's voxels
+        # Shervin: let me know what you think about this line
+        return np.mean(self.eval_lat[self.occ_lattice])
+
+
+    # Shervin: maybe we need to define finding neighbours as a behaviour, since it requires special information about what stencils needs to be considered with what weight...
     def update_neighbor(self, env: environment):
         for stencil in self.stencils:
             self.neighbours[stencil] = tg.to_lattice(np.copy(self.occ_lattice), self.occ_lattice)
@@ -175,13 +192,6 @@ class agent():
     def action(self):
         # TODO: run all the specified behaviors of the agents with their corresponding parameters
         pass
-
-#class particle():
-    #def __init__(self, stencil_names : list, base, agent_name : str):
-        #pass
-    #def find_neigh(self):
-        #pass
-    
 
 
 # Dynamic Lattice class
