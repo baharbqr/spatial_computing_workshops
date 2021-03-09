@@ -2,10 +2,11 @@ from numpy.lib.function_base import select
 import topogenesis as tg
 import numpy as np
 import pandas as pd
+from topogenesis.datastructures.datastructures import lattice
 
 # Environment class
 class environment():
-    def __init__(self, avail_lattice : tg.lattice ,lattices : dict, agents_dict : dict, stencils: list):
+    def __init__(self, avail_lattice : tg.lattice ,lattices : dict, agents_dict : dict, stencils: dict):
         self.lattices = lattices
         self.lattice_names = [lattices.keys()]
         self.avail_lattice = avail_lattice
@@ -18,6 +19,7 @@ class environment():
         #TODO: run initialization
         self.initialization(agents_dict)
 
+        self.stencils = stencils
         #TODO: do we need distance matrix?
         
         pass
@@ -69,6 +71,7 @@ class environment():
         self.lattice_check()
         # TODO: check if the preferences of agents matches with the provided lattices
         self.all_agents_initialization(agents_dict)
+        self.define_neighbour_lattice()
         pass
     
     def lattice_check(self):
@@ -93,6 +96,11 @@ class environment():
 
         pass
 
+    def define_neighbour_lattice(self):
+        self.neigh_matrix = {}
+        for stencil in self.stencils:
+            self.neigh_matrix[stencil] = self.avail_lattice.find_neighbours(self.stencils[stencil], order='dist')
+
 # Agent class
 class agent():
     def __init__(self, aid: int, name: str, env: environment, preferences: dict, stencil_names: list, origin: list = None, behaviors: dict = None):
@@ -114,14 +122,10 @@ class agent():
 
         # TODO: initialize the agent's occupation lattice ----> This is tha lattice that describes the voxels occupied by this agent only
         self.occ_lattice = env.occ_lattice == aid
-        # Shervin: both of these are moved to update_env_lattices method
-        # self.update_avail_lattice(env) 
-        # self.update_occ_lattice(env)
+        # Bahar: In the line above, what does "== aid" do? Does it turn all the ones to the agent number?
+        #        If yes, why should the agent's occ lattice contains the agent id itself? Isn't it better to keep it as 1 and 0's and
+        #        wherever needed  multiply it with its id?
         self.update_env_lattices(env)
-        # Bahar: If 'self.origin' is a list of tuples of indexes, can I write
-        #       env.occ_lattice[self.origin] = self.id
-        #       instead? 
-        # Shervin: self.origin is not an important attribute, maybe it is even better to remove it to avoid confusion. But the answer to your question is yes.      
 
         # TODO: initialize the agent's available neighbour lattice per stencil
         self.neighbours = {}
@@ -139,54 +143,54 @@ class agent():
         return env.avail_index[select_id]
     
     def update_env_lattices(self, env:environment):
-        # Shervin: I have rewritten this part in a vectorised paradigm. I will leave your own code for comparison, remove it after studying the difference.
         env.occ_lattice[self.occ_lattice] = self.id
         env.avail_lattice[self.occ_lattice] = 0
-        # self.origin 
-        # for agn_index in self.origin:
-        #     env.occ_lattice[tuple(agn_index)] = self.id
-        #     self.occ_lattice[tuple(agn_index)] = 1
-        # pass
-
-    # def update_new_vox_occ(self, new_agn_vox_origin: list, env: environment):
-    #     # Shervin: This function is not necessary since it can be replaced by one line of code like this:
-    #     # self.occ_lattice[indices] = True
-    #     for index in new_agn_vox_origin:
-    #         env.occ_lattice[tuple(index)] = self.id
-    #         self.occ_lattice[tuple(index)] = 1
-
-    # def update_new_vox_avail(self, new_agn_vox_origin: list, env: environment):
-    #     # Shervin: similar to the previous function, it is nt necessary
-    #     for index in new_agn_vox_origin:
-    #         env.avail_lattice[tuple(index)] = 0
 
     def evaluation(self, env : environment):
         # TODO: evaluate all the voxels based on the agents preferences
-        # initializing the evaluation lattice
+        # Bahar: We should return value here, right?
         eval_lat = tg.to_lattice(np.ones(self.occ_lattice.shape), self.occ_lattice)
-        # Shervin: Since the env.lattices is a dictionary we need to iterate it differently
-        # for info in env.lattices.keys():
-        #     eval_lat *= env.lattices[info] ** self.preferences[info]
-        # we do not need to return something, we can just change the attribute of the agent
         self.eval_lat = eval_lat
 
     @property
     def satisfaction(self):
         # TODO: compute the agents satisfaction based on the value of it's voxels
-        # Shervin: let me know what you think about this line
         return np.mean(self.eval_lat[self.occ_lattice])
 
 
-    # Shervin: maybe we need to define finding neighbours as a behaviour, since it requires special information about what stencils needs to be considered with what weight...
-    def update_neighbor(self, env: environment):
-        for stencil in self.stencils:
-            self.neighbours[stencil] = tg.to_lattice(np.copy(self.occ_lattice), self.occ_lattice)
-            for loc in self.origin:
-                neigh_index = env.avail_lattice.find_neighbours_masked(env.stencils[stencil], loc, id_type="3D")
-                for index in neigh_index:
-                    self.neighbours[stencil][tuple(index)] = 1.0
-            self.neighbours[stencil] *= env.avail_lattice
-        pass
+    # Bahar: I wasn't sure if in python we can have a function with two different sets of arguments. I did a quick search but didn't find anything.
+    #        Also I wasn't sure how we will end up with the data type we're passing to the function. Personally, I'm fond of lattices.
+    #        Also I THINK it might be a good idea to declare behaviors as @property like satisfaction, but I don't know how it might work. So
+    #           for now they are methods in a dictionary... I guess.
+    def beh_occupy(self, vox_id, env : environment):
+        for id in vox_id:
+            self.occ_lattice[np.unravel_index(id, self.occ_lattice.shape)] = 1.0
+            self.update_env_lattices(env)
+
+    def beh_occupy(self, vox_lattice : tg.lattice, env : environment):
+        self.occ_lattice[vox_lattice] = 1.0
+        self.update_env_lattices(env)
+    
+    def beh_leave(self, vox_id, env : environment):
+        for id in vox_id:
+            self.occ_lattice[np.unravel_index(id, self.occ_lattice.shape)] = 0.0
+            self.update_env_lattices(env)
+
+    def beh_leave(self, vox_lattice : tg.lattice, env : environment):
+        self.occ_lattice[vox_lattice] = 0.0
+        self.update_env_lattices(env)
+
+    # Bahar: check this one please :)
+    #        Although it was fun playing with the data in my head, I think there might be a simpler way.
+    def beh_find_neighbour (self, stencils : list, env: environment):
+        neighbourhood = {}
+        for stencil in stencils:
+            all_neighbours = env.neigh_matrix[np.where(np.array(self.occ_lattice).flatten() == 1.0)].reshape(tuple([-1] + list(self.occ_lattice.shape))).sum(0)
+            neighbourhood[stencil]  = all_neighbours[np.where(all_neighbours == 1.0)]
+        return neighbourhood
+
+    # TODO : box behavior
+    # TODO : depth behavior
 
 
     def action(self):
