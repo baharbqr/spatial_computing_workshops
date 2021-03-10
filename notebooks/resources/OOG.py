@@ -107,7 +107,6 @@ class agent():
         self.name = name
         self.stencils = env.stencils[stencil_names]
         self.id = aid
-
         # TODO: Set all the preferences as attributes
         self.preferences = preferences
 
@@ -157,6 +156,16 @@ class agent():
         # TODO: compute the agents satisfaction based on the value of it's voxels
         return np.mean(self.eval_lat[self.occ_lattice])
 
+    @property
+    def bounding_box(self):
+        b_box = np.copy(self.occ_lattice)
+        b_slice = np.nonzero(self.occ_lattice)
+        b_box[b_slice.min(1,2): b_slice.max(1,2) + 1, b_slice.min(0,2): b_slice.max(0,2) + 1, b_slice.min(0,1) : b_slice.max(0,1) + 1] = 1
+        return b_box
+    
+    @property
+    def shape(self):
+        return np.nonzero(self.bounding_box).shape
 
     # Bahar: I wasn't sure if in python we can have a function with two different sets of arguments. I did a quick search but didn't find anything.
     #        Also I wasn't sure how we will end up with the data type we're passing to the function. Personally, I'm fond of lattices.
@@ -189,8 +198,13 @@ class agent():
             neighbourhood[stencil]  = all_neighbours[np.where(all_neighbours == 1.0)]
         return neighbourhood
 
-    # TODO : box behavior
+    # TODO : box character
+    def char_embed_box(self):
+        self.bounding_box *= self.character[box]
+    
     # TODO : depth behavior
+    def char_building_depth(self, env : environment):
+        pass
 
 
     def action(self):
