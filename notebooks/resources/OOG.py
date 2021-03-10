@@ -16,13 +16,11 @@ class environment():
         self.bounds = avail_lattice.bounds
         #TODO: extract lattice shape
         self.shape = avail_lattice.shape
+        self.stencils = stencils
         #TODO: run initialization
         self.initialization(agents_dict)
 
-        self.stencils = stencils
         #TODO: do we need distance matrix?
-        
-        pass
 
     def all_lattice_update(self):
         # TODO: run lattice update on all dynamic lattices
@@ -71,13 +69,13 @@ class environment():
         self.lattice_check()
         # TODO: check if the preferences of agents matches with the provided lattices
         self.all_agents_initialization(agents_dict)
-        self.define_neighbour_lattice()
-        pass
+        self.init_neighbour_matrices()
+
     
     def lattice_check(self):
         shapes, bounds, mins, maxs = [],[],[],[]
         # iterate over all lattices
-        for name, l in self.lattices.items():
+        for l in self.lattices.values():
             shapes.append(l.shape)
             bounds.append(l.bounds.flatten())
             mins.append(l.min)
@@ -96,10 +94,11 @@ class environment():
 
         pass
 
-    def define_neighbour_lattice(self):
-        self.neigh_matrix = {}
-        for stencil in self.stencils:
-            self.neigh_matrix[stencil] = self.avail_lattice.find_neighbours(self.stencils[stencil], order='dist')
+    def init_neighbour_matrices(self):
+        neigh_matrices = {}
+        for stencil_name, stencil in self.stencils.items():
+            neigh_matrices[stencil_name] = self.avail_lattice.find_neighbours(stencil)
+        self.neigh_matrices = neigh_matrices
 
 # Agent class
 class agent():
@@ -119,11 +118,8 @@ class agent():
         else:
             self.origin = agent.find_seed(self, env)
 
-        # TODO: initialize the agent's occupation lattice ----> This is tha lattice that describes the voxels occupied by this agent only
         self.occ_lattice = env.occ_lattice == aid
-        # Bahar: In the line above, what does "== aid" do? Does it turn all the ones to the agent number?
-        #        If yes, why should the agent's occ lattice contains the agent id itself? Isn't it better to keep it as 1 and 0's and
-        #        wherever needed  multiply it with its id?
+
         self.update_env_lattices(env)
 
         # TODO: initialize the agent's available neighbour lattice per stencil
@@ -133,7 +129,6 @@ class agent():
         # TODO: add agent satisfaction
         self.satisfaction = {}
         self.satisfaction = self.evaluation(env)
-
 
     def find_seed(self, env: environment):
         # TODO: run the initial seed finding
@@ -189,15 +184,30 @@ class agent():
         self.occ_lattice[vox_lattice] = 0.0
         self.update_env_lattices(env)
 
-    # Bahar: check this one please :)
-    #        Although it was fun playing with the data in my head, I think there might be a simpler way.
-    def beh_find_neighbour (self, stencils : list, env: environment):
-        neighbourhood = {}
-        for stencil in stencils:
-            all_neighbours = env.neigh_matrix[np.where(np.array(self.occ_lattice).flatten() == 1.0)].reshape(tuple([-1] + list(self.occ_lattice.shape))).sum(0)
-            neighbourhood[stencil]  = all_neighbours[np.where(all_neighbours == 1.0)]
-        return neighbourhood
+    def beh_find_neighbour (self, stencil_name, env: environment, return_counts=False, return_neigh_ind=False):
+        all_neighs = env.neigh_matrices[stencil_name][np.where(np.array(self.occ_lattice).flatten())].flatten()
+        neighbourhood_flat = self.occ_lattice.flatten() * 0
+        # all_neighbours = env.neigh_matrix[np.where(np.array(self.occ_lattice).flatten())].reshape(tuple([-1] + list(self.occ_lattice.shape))).sum(0)
+        if return_counts:
+            unq_neighs, unq_counts = np.unique(all_neighs, return_counts=True)
+            neighbourhood_flat[unq_neighs] = unq_counts
+        else:
+            neighbourhood_flat[all_neighs] = 1
 
+        neighbourhood = tg.to_lattice(neighbourhood_flat.reshape(self.occ_lattice), self.occ_lattice)
+
+        if return_neigh_ind:
+            if return_neigh_ind=="1D":
+                indices_1d = np.argwhere(neighbourhood_flat > 0)
+                return (neighbourhood, indices_1d)
+            elif return_neigh_ind=="3D":
+                indices_3d = np.argwhere(neighbourhood > 0)
+                return (neighbourhood, indices_3d)
+        else:
+            return neighbourhood
+
+    def beh_squareness(self):
+        pass
     # TODO : box character
     def char_embed_box(self):
         self.bounding_box *= self.character[box]
@@ -210,6 +220,8 @@ class agent():
     def action(self):
         # TODO: run all the specified behaviors of the agents with their corresponding parameters
         pass
+
+
 
 
 # Dynamic Lattice class
